@@ -72,6 +72,23 @@ func (c *corpus) wordprob(word string) float64 {
   return float64(c.words[word]) / c.total
 }
 
+// maxprob finds the largest prob_k value from a slice of prob structs.
+func maxprob(ps []*prob) (float64, int) {
+  var (
+    prob_k float64
+    k int
+  )
+
+  for _, z := range ps {
+    if z.prob_k > prob_k {
+      prob_k = z.prob_k
+      k = z.k
+    }
+  }
+
+  return prob_k, k
+}
+
 // reverse returns slice s in reverse.
 func reverse(s []string) []string {
     for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
@@ -121,8 +138,6 @@ func (c *corpus) viterbi(text string) []string {
   var (
     probs = []float64{1.0}
     lasts = []int{0}
-    prob_k float64
-    k int
   )
 
   for i := 1; i < len(text) + 1; i++ {
@@ -131,14 +146,7 @@ func (c *corpus) viterbi(text string) []string {
       y = append(y, newprob(probs[j] * c.wordprob(text[j:i]), j))
     }
 
-    prob_k = 0
-    for _, z := range y {
-
-      if z.prob_k > prob_k {
-        prob_k = z.prob_k
-        k = z.k
-      }
-    }
+    prob_k, k := maxprob(y)
 
     probs = append(probs, prob_k)
     lasts = append(lasts, k)
