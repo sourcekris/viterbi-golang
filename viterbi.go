@@ -12,7 +12,7 @@ import (
   "io/ioutil"
   "log"
   "regexp"
-  "sort"
+  "strings"
 )
 
 type corpus struct {
@@ -26,13 +26,13 @@ type prob struct {
   k int
 }
 
-// newcorpus returns a new corpus struct initialized with nil values.
-func newcorpus() *corpus {
+// newCorpus returns a new corpus struct initialized with nil values.
+func newCorpus() *corpus {
   return &corpus{}
 }
 
-// newprob takes a prob_k and a k and returns a pointer to a prob struct.
-func newprob(pk float64, k int) *prob {
+// newProb takes a prob_k and a k and returns a pointer to a prob struct.
+func newProb(pk float64, k int) *prob {
   return &prob{
     prob_k: pk,
     k: k,
@@ -48,8 +48,8 @@ func max(x, y int) int {
   return y
 }
 
-// wordfreq populates the words map in a corpus struct with word frequencies.
-func (c *corpus) wordfreq(w []string) {
+// wordFreq populates the words map in a corpus struct with word frequencies.
+func (c *corpus) wordFreq(w []string) {
   out := make(map[string]int)
 
   var total int
@@ -67,13 +67,14 @@ func (c *corpus) wordfreq(w []string) {
   c.total = float64(total)
 }
 
-// wordprob calculates how probable word is in context of corpus c.
-func (c *corpus) wordprob(word string) float64 {
+// wordProb calculates how probable word is in context of corpus c.
+func (c *corpus) wordProb(word string) float64 {
   return float64(c.words[word]) / c.total
 }
 
-// maxprob finds the largest prob_k value from a slice of prob structs.
-func maxprob(ps []*prob) (float64, int) {
+// maxProb finds the largest prob_k value from a slice of prob structs and 
+// returns the prob_k, k.
+func maxProb(ps []*prob) (float64, int) {
   var (
     prob_k float64
     k int
@@ -102,10 +103,10 @@ func (p prob) String() string {
   return fmt.Sprintf("(%v), %d", p.prob_k, p.k)
 }
 
-// words reads words from a file with filename f and returns a *corpus.
-func (c *corpus) loadwords(f string) {
+// words reads words from a file with filename f and packs a corpus c.
+func (c *corpus) loadWords(f string) {
 
-  re := regexp.MustCompile("[a-z]+")
+  re := regexp.MustCompile("[A-Za-z]+")
   b, err := ioutil.ReadFile(f)
   if err != nil {
     log.Fatal(err)
@@ -124,12 +125,10 @@ func (c *corpus) loadwords(f string) {
     if len(w) > maxlen {
       maxlen = len(w)
     }
-    words = append(words, string(w))
+    words = append(words, strings.ToLower(string(w)))
   }
 
-  sort.Strings(words)
-
-  c.wordfreq(words)
+  c.wordFreq(words)
   c.maxlen = maxlen
 }
 
@@ -143,10 +142,10 @@ func (c *corpus) viterbi(text string) []string {
   for i := 1; i < len(text) + 1; i++ {
     var y []*prob
     for j := max(0, i - c.maxlen); j < i; j++ {
-      y = append(y, newprob(probs[j] * c.wordprob(text[j:i]), j))
+      y = append(y, newProb(probs[j] * c.wordProb(text[j:i]), j))
     }
 
-    prob_k, k := maxprob(y)
+    prob_k, k := maxProb(y)
 
     probs = append(probs, prob_k)
     lasts = append(lasts, k)
@@ -162,12 +161,11 @@ func (c *corpus) viterbi(text string) []string {
     i = lasts[i]
   }
 
-
   return reverse(words)
 }
 
 func main() {
-  c := newcorpus()
-  c.loadwords("eng_news_2015_1M-sentences.txt")
-  fmt.Println(c.viterbi("ihaveadogandthedogiscool"))
+  c := newCorpus()
+  c.loadWords("eng_news_2015_1M-sentences.txt")
+  fmt.Println(c.viterbi("elevenpickleswentintotownandfoundapubopen"))
 }
